@@ -12,21 +12,21 @@ const moreLogs = async (sources) => {
   return logs.filter((log) => !!log);
 };
 
-const _queueMoreLogs = (sources, queue) => async () => {
+const _queueMoreLogs = (sources, heap) => async () => {
   const logs = await moreLogs(sources);
-  queue.addAll(logs);
+  heap.addAll(logs);
 };
 
 module.exports = async (logSources, printer) => {
-  const queue = new Heap((logA, logB) => logA.date - logB.date);
-  const queueMoreLogs = _queueMoreLogs(logSources, queue);
+  const heap = new Heap((logA, logB) => logA.date - logB.date);
+  const queueMoreLogs = _queueMoreLogs(logSources, heap);
 
   // Initialize the queue
   await queueMoreLogs();
-  let current = queue.poll();
+  let current = heap.poll();
 
-  while (!queue.isEmpty()) {
-    const nextLog = queue.peek();
+  while (!heap.isEmpty()) {
+    const nextLog = heap.peek();
 
     if (current.date < nextLog.date) {
       await queueMoreLogs();
@@ -34,7 +34,7 @@ module.exports = async (logSources, printer) => {
 
     printer.print(current);
 
-    current = queue.poll();
+    current = heap.poll();
   }
 
   printer.done();

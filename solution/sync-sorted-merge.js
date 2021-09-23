@@ -10,28 +10,28 @@ const moreLogs = (sources) => {
   return logs.filter((log) => !!log);
 };
 
-const _queueMoreLogs = (sources, queue) => () => {
+const _queueMoreLogs = (sources, heap) => () => {
   const logs = moreLogs(sources);
-  queue.addAll(logs);
+  heap.addAll(logs);
 };
 
 module.exports = (logSources, printer) => {
-  const queue = new Heap((logA, logB) => logA.date - logB.date);
-  const queueMoreLogs = _queueMoreLogs(logSources, queue);
+  const heap = new Heap((logA, logB) => logA.date - logB.date);
+  const queueMoreLogs = _queueMoreLogs(logSources, heap);
 
   // Initialize the queue
   queueMoreLogs();
-  let current = queue.poll();
+  let current = heap.poll();
 
-  while (!queue.isEmpty()) {
-    const nextLog = queue.peek();
+  while (!heap.isEmpty()) {
+    const nextLog = heap.peek();
 
     if (current.date < nextLog.date) {
       queueMoreLogs();
     }
 
     printer.print(current);
-    current = queue.poll();
+    current = heap.poll();
   }
 
   printer.done();
