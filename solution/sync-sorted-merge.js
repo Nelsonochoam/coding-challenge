@@ -6,9 +6,7 @@ const { Heap } = require("heap-js");
 module.exports = (logSources, printer) => {
   const drained = {};
   let sourcesWithLogs = logSources.length;
-  const priorityQueue = new Heap(
-    (entryA, entryB) => entryA.log.date - entryB.log.date
-  );
+  const priorityQueue = new Heap(([logA], [logB]) => logA.date - logB.date);
 
   while (sourcesWithLogs) {
     // 1) Fill the min heap with a log from each source
@@ -19,7 +17,7 @@ module.exports = (logSources, printer) => {
         drained[i] = true;
         sourcesWithLogs--;
       } else {
-        priorityQueue.push({ source, log: source.pop() });
+        priorityQueue.push([source.pop(), i]);
       }
     }
 
@@ -27,8 +25,8 @@ module.exports = (logSources, printer) => {
     let currentMin = priorityQueue.poll();
 
     while (!priorityQueue.isEmpty()) {
-      const { log, source } = currentMin;
-      const { log: nextLog } = priorityQueue.peek();
+      const [log, index] = currentMin;
+      const [nextLog] = priorityQueue.peek();
 
       // In case you are at the last heap element and ther is no
       // next log
@@ -40,13 +38,13 @@ module.exports = (logSources, printer) => {
       let current = log;
       while (current.date < nextLog.date) {
         printer.print(current);
-        current = source.pop();
+        current = logSources[index].pop();
       }
 
       // At this point we break but current is going to be
       // greater than the nextLog.date (Queue it again and it will come after)
       if (current && current.date > nextLog.date) {
-        priorityQueue.push({ source, log: current });
+        priorityQueue.push([current, index]);
       }
 
       currentMin = priorityQueue.poll();
