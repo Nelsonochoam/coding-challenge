@@ -23,6 +23,12 @@ module.exports = (logSources, printer) => {
   queueMoreLogs();
   let current = heap.poll();
 
+  // NOTE: I know here instead of pulling from every source (every loop)
+  // I could have peeked the next element on the heap and keep poping that source
+  // until it becomes greater than then next item on the min heap.
+  // That would have been way better for memory than this. I just didn't
+  // have the time to do it.
+  
   while (!heap.isEmpty()) {
     queueMoreLogs();
     printer.print(current);
