@@ -24,12 +24,7 @@ module.exports = (logSources, printer) => {
   let current = heap.poll();
 
   while (!heap.isEmpty()) {
-    const nextLog = heap.peek();
-
-    if (current.date < nextLog.date) {
-      queueMoreLogs();
-    }
-
+    queueMoreLogs();
     printer.print(current);
     current = heap.poll();
   }

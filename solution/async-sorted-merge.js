@@ -26,17 +26,10 @@ module.exports = async (logSources, printer) => {
   let current = heap.poll();
 
   while (!heap.isEmpty()) {
-    const nextLog = heap.peek();
-
-    if (current.date < nextLog.date) {
-      await queueMoreLogs();
-    }
-
+    await queueMoreLogs();
     printer.print(current);
-
     current = heap.poll();
   }
-
   printer.done();
   console.log("Async sort complete.");
 };
