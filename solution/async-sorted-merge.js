@@ -24,12 +24,12 @@ module.exports = async (logSources, printer) => {
   // Initialize the queue
   await queueMoreLogs();
   let current = heap.poll();
-
   while (!heap.isEmpty()) {
     await queueMoreLogs();
     printer.print(current);
     current = heap.poll();
   }
+
   printer.done();
   console.log("Async sort complete.");
 };
