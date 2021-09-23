@@ -3,55 +3,37 @@ const { Heap } = require("heap-js");
 
 // Print all entries, across all of the sources, in chronological order.
 
+const moreLogs = (sources) => {
+  const logs = sources.map((source) =>
+    source.drained ? undefined : source.pop()
+  );
+  return logs.filter((log) => !!log);
+};
+
+const _queueMoreLogs = (sources, queue) => () => {
+  const logs = moreLogs(sources);
+  queue.addAll(logs);
+};
+
 module.exports = (logSources, printer) => {
-  const drained = {};
-  let sourcesWithLogs = logSources.length;
-  const priorityQueue = new Heap(([logA], [logB]) => logA.date - logB.date);
+  const queue = new Heap((logA, logB) => logA.date - logB.date);
+  const queueMoreLogs = _queueMoreLogs(logSources, queue);
 
-  while (sourcesWithLogs) {
-    // 1) Fill the min heap with a log from each source
-    for (let i = 0; i < logSources.length; i++) {
-      const source = logSources[i];
+  // Initialize the queue
+  queueMoreLogs();
+  let current = queue.poll();
 
-      if (source.drained && !drained[i]) {
-        drained[i] = true;
-        sourcesWithLogs--;
-      } else {
-        priorityQueue.push([source.pop(), i]);
-      }
+  while (!queue.isEmpty()) {
+    const nextLog = queue.peek();
+
+    if (current.date < nextLog.date) {
+      queueMoreLogs();
     }
 
-    // 2) Print the items from different sources in chronological order
-    let currentMin = priorityQueue.poll();
-
-    while (!priorityQueue.isEmpty()) {
-      const [log, index] = currentMin;
-      const [nextLog] = priorityQueue.peek();
-
-      // In case you are at the last heap element and ther is no
-      // next log
-      if (!nextLog && log) {
-        printer.print(log);
-        break;
-      }
-
-      let current = log;
-      while (current.date < nextLog.date) {
-        printer.print(current);
-        current = logSources[index].pop();
-      }
-
-      // At this point we break but current is going to be
-      // greater than the nextLog.date (Queue it again and it will come after)
-      if (current && current.date > nextLog.date) {
-        priorityQueue.push([current, index]);
-      }
-
-      currentMin = priorityQueue.poll();
-    }
+    printer.print(current);
+    current = queue.poll();
   }
 
   printer.done();
-
   return console.log("Sync sort complete.");
 };

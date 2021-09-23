@@ -3,57 +3,40 @@ const { Heap } = require("heap-js");
 
 // Print all entries, across all of the *async* sources, in chronological order.
 
-module.exports = (logSources, printer) => {
-  const drained = {};
-  let sourcesWithLogs = logSources.length;
-  const priorityQueue = new Heap(([logA], [logB]) => logA.date - logB.date);
+// Pulls logs from every source once
+const moreLogs = async (sources) => {
+  const promises = sources.map((source) =>
+    source.drained ? Promise.resolve() : source.popAsync()
+  );
+  const logs = await Promise.all(promises);
+  return logs.filter((log) => !!log);
+};
 
-  return new Promise(async (resolve, reject) => {
-    while (sourcesWithLogs) {
-      // 1) Fill the min heap with a log from each source
-      for (let i = 0; i < logSources.length; i++) {
-        const source = logSources[i];
+const _queueMoreLogs = (sources, queue) => async () => {
+  const logs = await moreLogs(sources);
+  queue.addAll(logs);
+};
 
-        if (source.drained && !drained[i]) {
-          drained[i] = true;
-          sourcesWithLogs--;
-        } else {
-          priorityQueue.push([await source.popAsync(), i]);
-        }
-      }
+module.exports = async (logSources, printer) => {
+  const queue = new Heap((logA, logB) => logA.date - logB.date);
+  const queueMoreLogs = _queueMoreLogs(logSources, queue);
 
-      // 2) Print the items from different sources in chronological order
-      let currentMin = priorityQueue.poll();
+  // Initialize the queue
+  await queueMoreLogs();
+  let current = queue.poll();
 
-      while (!priorityQueue.isEmpty()) {
-        const [log, index] = currentMin;
-        const [nextLog] = priorityQueue.peek();
+  while (!queue.isEmpty()) {
+    const nextLog = queue.peek();
 
-        // In case you are at the last heap element and ther is no
-        // next log
-        if (!nextLog && log) {
-          printer.print(log);
-          break;
-        }
-
-        let current = log;
-        while (current.date < nextLog.date) {
-          printer.print(current);
-          current = await logSources[index].popAsync();
-        }
-
-        // At this point we break but current is going to be
-        // greater than the nextLog.date (Queue it again and it will come after)
-        if (current && current.date > nextLog.date) {
-          priorityQueue.push([current, index]);
-        }
-
-        currentMin = priorityQueue.poll();
-      }
+    if (current.date < nextLog.date) {
+      await queueMoreLogs();
     }
 
-    printer.done();
+    printer.print(current);
 
-    resolve(console.log("Async sort complete."));
-  });
+    current = queue.poll();
+  }
+
+  printer.done();
+  console.log("Async sort complete.");
 };
